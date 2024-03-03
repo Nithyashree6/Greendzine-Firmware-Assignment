@@ -1,0 +1,68 @@
+#include <TimerOne.h> // Include the TimerOne library
+
+#define ADC_VREF_mV 5000.0 // in millivolts
+#define ADC_RESOLUTION 1024.0 //defines constants for the ADC reference voltage 
+#define PIN_LM35 A0   //sensor connected to analog A0 pin
+#define ONBOARD_LED 13 // Built-in LED on Arduino Uno board
+
+enum LedState {
+  LED_OFF,
+  LED_LOW_TEMP_BLINK,
+  LED_HIGH_TEMP_BLINK
+};
+
+LedState currentLedState = LED_OFF; //declare global variable
+unsigned long previousMillis = 0;
+const unsigned long intervalLowTemp = 250; // Blink interval for low temperature (250 ms)
+const unsigned long intervalHighTemp = 500; // Blink interval for high temperature (500 ms)
+
+void setup() {
+  Serial.begin(9600); //begin serial monitor
+  pinMode(ONBOARD_LED, OUTPUT);
+
+  // Initialize Timer1 with the desired interval
+  Timer1.initialize(intervalLowTemp * 1000); // Convert to microseconds
+  Timer1.attachInterrupt(handleTimerInterrupt);
+}
+
+void loop() {
+  // Get the ADC value from the temperature sensor
+  int adcVal = analogRead(PIN_LM35);
+
+  // Convert the ADC value to voltage in millivolts
+  float milliVolt = adcVal * (ADC_VREF_mV / ADC_RESOLUTION);
+
+  // Convert the voltage to the temperature in Celsius
+  float tempC = milliVolt / 10;
+
+  // Update LED state based on temperature
+  if (tempC < 30) {
+    currentLedState = LED_LOW_TEMP_BLINK;
+  } else {
+    currentLedState = LED_HIGH_TEMP_BLINK;
+  }
+}
+
+void handleTimerInterrupt() {
+  switch (currentLedState) {
+    case LED_OFF:
+      digitalWrite(ONBOARD_LED, LOW); // LED OFF
+      break;
+    case LED_LOW_TEMP_BLINK:
+      digitalWrite(ONBOARD_LED, !digitalRead(ONBOARD_LED)); // Toggle LED state
+      break;
+    case LED_HIGH_TEMP_BLINK:
+      digitalWrite(ONBOARD_LED, !digitalRead(ONBOARD_LED)); // Toggle LED state
+      break;
+  }
+}
+
+// Print the temperature in the Serial Monitor
+void printTemperature(float tempC) {
+  Serial.print("Temperature: ");
+  Serial.print(tempC);
+  Serial.print("°C");
+  float tempF = tempC * 9 / 5 + 32;
+  Serial.print(tempF);
+  Serial.println("°F");
+}
